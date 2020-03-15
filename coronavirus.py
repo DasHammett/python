@@ -28,10 +28,11 @@ for ax, country in zip(axes.flatten(), top9):
     last = df0.loc[df0.index == df0.index.max(),"value"].sum()
     ax.plot(df0["Date"], df0["value"], color="#6C6262",marker="o", markersize=3, linewidth=1, mfc = "#B4F38E")
     ax.axhline(10000, color = "red")
+    ax.axhline(5000, color = "#E1A994")
     ax.tick_params(axis="x",labelrotation=90)
     ax.set_title(f"{country} - # infected: {last}",size=9)
 plt.tight_layout(w_pad = -0.1, h_pad = 1.1)
-fig.suptitle("# people infected by coronavirus on top 9 countries", ha = "right")
+fig.suptitle("COVID-19 infected population by Country. Top 9 by volume", ha = "center")
 plt.subplots_adjust(left=0.11,bottom=0.22, right= 0.94, top = 0.87, wspace = 0.38, hspace = 0.45)
 plt.show()
 
@@ -41,3 +42,4 @@ for country, ax in zip(u, axes):
     df_top9[df_top9["Country/Region"] == country].plot(title = country, ax = ax, y="value", x = "Date")
 plt.tight_layout()
 plt.show()
+
