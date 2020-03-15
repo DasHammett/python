@@ -1,3 +1,8 @@
+""" 
+Evolució del coronavirus basat en l'script en R d'Arnau Cangros.
+Original en R disponible a: https://gitlab.com/acangros/coronavirus/-/blob/master/coronavirus.R
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
