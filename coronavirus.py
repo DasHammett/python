@@ -41,16 +41,3 @@ for country, ax in zip(u, axes):
     df_top9[df_top9["Country/Region"] == country].plot(title = country, ax = ax, y="value", x = "Date")
 plt.tight_layout()
 plt.show()
-
-################
-fig, axes = plt.subplots(3,3, sharex = True)
-for ax, country in zip(axes.flatten(), top9):
-    df0 = df_top9[df_top9["Country/Region"] == country]
-    last = df0.loc[df0.index == df0.index.max(),"value"].sum()
-    ax.plot(df0["Date"], df0["value"], color="k",marker="o", markersize=3, linewidth=1, mfc = "red")
-    ax.axhline(10000, color = "red")
-    ax.tick_params(axis="x",labelrotation=90)
-    ax.set_title(f"{country} - # infected: {last}",size=9)
-plt.tight_layout()
-plt.show()
-
