@@ -1,4 +1,4 @@
-""" 
+"""
 Python version: python3.7
 """
 """
@@ -22,14 +22,35 @@ top9 = df.loc[df.index == df.index.max()].groupby("Country/Region").sum().nlarge
 df_top9 = df[df["Country/Region"].isin(top9)]
 df_top9 = df_top9.groupby([df_top9.index, "Country/Region"]).sum().reset_index()
 
-g = sns.FacetGrid(df_top9, col = "Country/Region", col_wrap=3, sharey=False)
-g.map(plt.plot, "Date", "value")
-g.set_xticklabels(rotation = 90)
+fig, axes = plt.subplots(3,3, sharex = True)
+for ax, country in zip(axes.flatten(), top9):
+    df0 = df_top9[df_top9["Country/Region"] == country]
+    last = df0.loc[df0.index == df0.index.max(),"value"].sum()
+    ax.plot(df0["Date"], df0["value"], color="#6C6262",marker="o", markersize=3, linewidth=1, mfc = "#B4F38E")
+    ax.axhline(10000, color = "red")
+    ax.tick_params(axis="x",labelrotation=90)
+    ax.set_title(f"{country} - # infected: {last}",size=9)
+plt.tight_layout(w_pad = -0.1, h_pad = 1.1)
+fig.suptitle("# people infected by coronavirus on top 9 countries", ha = "right")
+plt.subplots_adjust(left=0.11,bottom=0.22, right= 0.94, top = 0.87, wspace = 0.38, hspace = 0.45)
 plt.show()
 
-df_top3 = df[df["Country/Region"].isin(["Spain","Italy","China"])]
-df_top3 = df_top3.groupby([df_top3.index,"Country/Region"]).sum().reset_index()
-
-sns.lineplot(data = df_top3,x = "Date", y = "value", hue = "Country/Region",style = "Country/Region",markers=["o","o","o"])
-plt.xticks(rotation = 45)
+u = df_top9["Country/Region"].unique()
+fig, axes = plt.subplots(ncols = 3,nrows=3, figsize = (10,3))
+for country, ax in zip(u, axes):
+    df_top9[df_top9["Country/Region"] == country].plot(title = country, ax = ax, y="value", x = "Date")
+plt.tight_layout()
 plt.show()
+
+################
+fig, axes = plt.subplots(3,3, sharex = True)
+for ax, country in zip(axes.flatten(), top9):
+    df0 = df_top9[df_top9["Country/Region"] == country]
+    last = df0.loc[df0.index == df0.index.max(),"value"].sum()
+    ax.plot(df0["Date"], df0["value"], color="k",marker="o", markersize=3, linewidth=1, mfc = "red")
+    ax.axhline(10000, color = "red")
+    ax.tick_params(axis="x",labelrotation=90)
+    ax.set_title(f"{country} - # infected: {last}",size=9)
+plt.tight_layout()
+plt.show()
+
