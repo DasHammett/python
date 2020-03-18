@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 
-formatter=DateFormatter("%Y-%m-%d")
+formatter =  mdates.DateFormatter("%Y-%m-%d")
 
 df=pd.read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv")
 df.drop(columns=["Province/State", "Lat", "Long"], inplace=True)
@@ -54,14 +54,14 @@ df.drop(columns ="cod_ine",inplace = True)
 df.drop(index = df[df["CCAA"] == "Total"].index, inplace = True)
 df = pd.melt(df, "CCAA")
 df.rename(columns = {"variable":"Date"}, inplace = True)
-df["Date"] = pd.to_datetime(df["Date"])
+df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
 
 top9CCAA = df[df["Date"] == df["Date"].max()].groupby("CCAA").sum().nlargest(9, "value").index
 df_top9CCAA = df[df["CCAA"].isin(top9CCAA)]
 
 fig, axes = plt.subplots(3,3, sharex = True)
 for ax, ccaa in zip(axes.flatten(), top9CCAA):
-    locator = mdates.AutoDateLocator(minticks = 3, maxticks = 10)
+    #locator = mdates.AutoDateLocator(minticks = 3, maxticks = 10)
     df0 = df_top9CCAA[df_top9CCAA["CCAA"] == ccaa]
     lastday = df_top9CCAA["Date"].max().strftime("%Y-%m-%d")
     increase = "+"+str(int((df0["value"] - df0.shift(1)["value"]).tail(1)))
@@ -72,9 +72,59 @@ for ax, ccaa in zip(axes.flatten(), top9CCAA):
     ax.axhline(500, color = "darkblue", ls = ":", alpha = 0.4)
     ax.set_xticklabels(df0["Date"], rotation = 45, ha="right")
     ax.xaxis.set_major_formatter(formatter)
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(3))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(2))
     ax.set_title(f"{ccaa} - # infected: {last}\n ({increase} from previous day)", size = 9)
 plt.tight_layout(w_pad = -4, h_pad = 1)
 fig.suptitle(f"COVID-19 infected population by region in Spain. Top 9 by volume\n Last update: {lastday}")
+plt.subplots_adjust(left=0.09, bottom=0.16, right = 0.94, top = 0.87)
+plt.show()
+
+"""
+COVID-19 data with mortality
+"""
+
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+
+data = pd.read_json("https://pomber.github.io/covid19/timeseries.json")
+formatter =  mdates.DateFormatter("%Y-%m-%d")
+
+appended_data = []
+for col in data.columns:
+    df = pd.json_normalize(data[col])
+    df["Country"] = col
+    appended_data.append(df)
+df = pd.concat(appended_data)
+df = df.reset_index()
+df["date"] = pd.to_datetime(df["date"])
+
+top9 = df[df["date"] == df["date"].max()].groupby("Country")["confirmed"].sum().nlargest(9).index
+df_top9 = df[df["Country"].isin(top9)]
+
+fig, axes = plt.subplots(3,3, sharex = True)
+for ax, country in zip(axes.flatten(), top9):
+    df0 = df_top9[df_top9["Country"] == country]
+    lastday = df_top9["date"].max().strftime("%Y-%m-%d")
+    increase = "+"+str(int((df0["confirmed"] - df0.shift(1)["confirmed"]).tail(1)))
+    last = df0[df0["date"] == df0["date"].max()]["confirmed"].sum()
+    deaths = int(df0["deaths"].tail(1))
+    recovered = int(df0["recovered"].tail(1))
+    ax.plot(df0["date"],df0["confirmed"])
+    ax.fill_between(df0["date"],0,df0["confirmed"], alpha = 0.3)
+    ax.bar(df0["date"],df0["deaths"]*-1,color="red")
+    ax.bar(df0["date"],df0["recovered"],color="green")
+    ax.axhline(10000, color = "red", ls=":", alpha = 0.4)
+    ax.axhline(5000, color = "darkblue", ls = ":", alpha = 0.4)
+    ax.text(0.01,0.9,f"Dead:{deaths}", transform = ax.transAxes, size = 8, color ="red")
+    ax.text(0.01,0.78,f"Recov:{recovered}", transform = ax.transAxes, size = 8, color ="green")
+    ax.set_xticklabels(df0["date"], rotation = 45, ha="right")
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax.set_title(f"{country} - # infected: {last}\n ({increase} from previous day)", size = 9)
+plt.tight_layout(w_pad = -2, h_pad = 1)
+fig.suptitle(f"COVID-19 infected population by Country. Top 9 by volume\n Last update: {lastday}")
 plt.subplots_adjust(left=0.09, bottom=0.16, right = 0.94, top = 0.87)
 plt.show()
