@@ -104,27 +104,44 @@ df["date"] = pd.to_datetime(df["date"])
 top9 = df[df["date"] == df["date"].max()].groupby("Country")["confirmed"].sum().nlargest(9).index
 df_top9 = df[df["Country"].isin(top9)]
 
-fig, axes = plt.subplots(3,3, sharex = True)
-for ax, country in zip(axes.flatten(), top9):
-    df0 = df_top9[df_top9["Country"] == country]
-    lastday = df_top9["date"].max().strftime("%Y-%m-%d")
-    increase = "+"+str(int((df0["confirmed"] - df0.shift(1)["confirmed"]).tail(1)))
-    last = df0[df0["date"] == df0["date"].max()]["confirmed"].sum()
-    deaths = int(df0["deaths"].tail(1))
-    recovered = int(df0["recovered"].tail(1))
-    ax.plot(df0["date"],df0["confirmed"])
-    ax.fill_between(df0["date"],0,df0["confirmed"], alpha = 0.3)
-    ax.bar(df0["date"],df0["deaths"]*-1,color="red")
-    ax.bar(df0["date"],df0["recovered"],color="green")
-    ax.axhline(10000, color = "red", ls=":", alpha = 0.4)
-    ax.axhline(5000, color = "darkblue", ls = ":", alpha = 0.4)
-    ax.text(0.01,0.9,f"Dead:{deaths}", transform = ax.transAxes, size = 8, color ="red")
-    ax.text(0.01,0.78,f"Recov:{recovered}", transform = ax.transAxes, size = 8, color ="green")
-    ax.set_xticklabels(df0["date"], rotation = 45, ha="right")
-    ax.xaxis.set_major_formatter(formatter)
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
-    ax.set_title(f"{country} - # infected: {last}\n ({increase} from previous day)", size = 9)
-plt.tight_layout(w_pad = -2, h_pad = 1)
-fig.suptitle(f"COVID-19 infected population by Country. Top 9 by volume\n Last update: {lastday}")
-plt.subplots_adjust(left=0.09, bottom=0.16, right = 0.94, top = 0.87)
-plt.show()
+def covid_country(country):
+
+    def plotting(dataframe):
+        lastday = dataframe["date"].max().strftime("%Y-%m-%d")
+        increase = "+"+str(int((dataframe["confirmed"] - dataframe.shift(1)["confirmed"]).tail(1)))
+        last = dataframe[dataframe["date"] == dataframe["date"].max()]["confirmed"].sum()
+        deaths = int(dataframe["deaths"].tail(1))
+        recovered = int(dataframe["recovered"].tail(1))
+        ax.plot(dataframe["date"],dataframe["confirmed"], marker = "o",markerfacecolor = "white", markersize=4)
+        ax.fill_between(dataframe["date"],0,dataframe["confirmed"], alpha = 0.3)
+        ax.bar(dataframe["date"],dataframe["deaths"]*-1,color="red")
+        ax.bar(dataframe["date"],dataframe["recovered"],color="green")
+        ax.axhline(10000, color = "red", ls=":", alpha = 0.4)
+        ax.axhline(5000, color = "darkblue", ls = ":", alpha = 0.4)
+        ax.text(0.01,0.9,f"Dead:{deaths}", transform = ax.transAxes, size = 8, color ="red")
+        ax.text(0.01,0.78,f"Recov:{recovered}", transform = ax.transAxes, size = 8, color ="green")
+        ax.set_xticklabels(dataframe["date"], rotation = 45, ha="right", size = 8)
+        ax.xaxis.set_major_formatter(formatter)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+        ax.set_title(f"{country} - # infected: {last}\n ({increase} from previous day)", size = 9)
+
+    if type(country) is str:
+        data = df[df["Country"] == country]
+        fig, ax = plt.subplots()
+        plotting(data)
+        fig.suptitle(f"COVID-19 infected population for {country}\n Last update: {lastday}")
+        plt.subplots_adjust(left=0.09, bottom=0.16, right = 0.94, top = 0.87)
+        plt.show()
+
+    else:
+        fig, axes = plt.subplots(3,3, sharex = True)
+
+        for ax, country in zip(axes.flatten(), top9):
+            data = df[df["Country"] == country]
+            plotting(data)
+
+        plt.tight_layout(w_pad = -2, h_pad = 1)
+        fig.suptitle(f"COVID-19 infected population by Country. Top 9 by volume\n Last update: {lastday}")
+        plt.subplots_adjust(left=0.09, bottom=0.16, right = 0.94, top = 0.87)
+        plt.show()
+
