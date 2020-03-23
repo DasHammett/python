@@ -99,7 +99,7 @@ def covid_country(country):
             else:
                 n = int(list_length // 3 + 1)
         over_plots = int(m*n - list_length)
-        if m == n:
+        if m * n == list_length:
             fig, axes = plt.subplots(n, m, sharex=True)
         else:
             fig, axes = plt.subplots(n, m)
@@ -109,7 +109,7 @@ def covid_country(country):
 
         plt.tight_layout(w_pad=-2, h_pad=1)
         fig.suptitle(
-            f"COVID-19 infected population by Country. Top 9 by volume\n Last update: {lastday}")
+            f"COVID-19 infected population by Country/Region. Top 9 by volume\n Last update: {lastday}")
         plt.subplots_adjust(left=0.09, bottom=0.16, right=0.94, top=0.87)
         for i in range(1, over_plots+1):
             axes.flat[-i].set_visible(False)
@@ -119,37 +119,40 @@ def covid_country(country):
 """
 COVID-19 for Spain, by region
 """
-df = pd.read_csv(
-    "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_casos.csv")
-df.drop(columns="cod_ine", inplace=True)
-df.drop(index=df[df["CCAA"] == "Total"].index, inplace=True)
-df = pd.melt(df, "CCAA")
-df.rename(columns={"variable": "Date"}, inplace=True)
-df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
 
-top9CCAA = df[df["Date"] == df["Date"].max()].groupby(
-    "CCAA").sum().nlargest(9, "value").index
-df_top9CCAA = df[df["CCAA"].isin(top9CCAA)]
 
-fig, axes = plt.subplots(3, 3, sharex=True)
-for ax, ccaa in zip(axes.flatten(), top9CCAA):
-    #locator = mdates.AutoDateLocator(minticks = 3, maxticks = 10)
-    df0 = df_top9CCAA[df_top9CCAA["CCAA"] == ccaa]
-    lastday = df_top9CCAA["Date"].max().strftime("%Y-%m-%d")
-    increase = "+"+str(int((df0["value"] - df0.shift(1)["value"]).tail(1)))
-    last = df0[df0["Date"] == df0["Date"].max()]["value"].sum()
-    ax.plot(df0["Date"], df0["value"])
-    ax.fill_between(df0["Date"], 0, df0["value"], alpha=0.3)
-    ax.axhline(1000, color="red", ls=":", alpha=0.4)
-    ax.axhline(500, color="darkblue", ls=":", alpha=0.4)
-    ax.set_xticklabels(df0["Date"], rotation=45, ha="right")
-    ax.xaxis.set_major_formatter(formatter)
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(2))
-    ax.set_title(
-        f"{ccaa} - # infected: {last}\n ({increase} from previous day)",
-        size=9)
-plt.tight_layout(w_pad=-4, h_pad=1)
-fig.suptitle(
-    f"COVID-19 infected population by region in Spain. Top 9 by volume\n Last update: {lastday}")
-plt.subplots_adjust(left=0.09, bottom=0.16, right=0.94, top=0.87)
-plt.show()
+def carga_datos(url):
+    data = pd.read_csv(url)
+    data.drop(columns="cod_ine", inplace=True)
+    data.drop(index=data[data["CCAA"] == "Total"].index, inplace=True)
+    data = pd.melt(data, "CCAA")
+    data.rename(columns={"variable": "date"}, inplace=True)
+    data["date"] = pd.to_datetime(data["date"], format="%d/%m/%Y")
+    return data
+
+
+urls = ["https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_casos.csv",
+        "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_altas.csv",
+        "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_fallecidos.csv"]
+
+appended_df = []
+for url in urls:
+    df = carga_datos(url)
+    name = url.split(".")[-2].split("_")[-1]  # get word before extension
+    df.rename(columns={"value": name}, inplace=True)
+    appended_df.append(df)
+
+df = pd.concat([df.set_index(["date", "CCAA"])
+                for df in appended_df], axis=1).reset_index()
+df.rename(
+    columns={
+        "casos": "confirmed",
+        "altas": "recovered",
+        "fallecidos": "deaths",
+        "CCAA": "Country"},
+    inplace=True)
+df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y")
+
+top9CCAA = df[df["date"] == df["date"].max()].groupby(
+    "Country").sum().nlargest(9, "confirmed").index
+df_top9 = df[df["Country"].isin(top9CCAA)]
