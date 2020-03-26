@@ -28,7 +28,7 @@ top9 = df[df["date"] == df["date"].max()].groupby(
 df_top9 = df[df["Country"].isin(top9)]
 
 
-def covid_country(country):
+def covid_country(country, recovered=False):
 
     lastday = df["date"].max().strftime("%Y-%m-%d")
 
@@ -38,7 +38,6 @@ def covid_country(country):
         last = dataframe[dataframe["date"] ==
                          dataframe["date"].max()]["confirmed"].sum()
         deaths = int(dataframe["deaths"].tail(1))
-        recovered = int(dataframe["recovered"].tail(1))
         ax.plot(
             dataframe["date"],
             dataframe["confirmed"],
@@ -50,7 +49,16 @@ def covid_country(country):
             0, dataframe["confirmed"],
             alpha=0.3)
         ax.bar(dataframe["date"], dataframe["deaths"]*-1, color="red")
-        ax.bar(dataframe["date"], dataframe["recovered"], color="green")
+        if recovered == True:
+            recoverednum = int(dataframe["recovered"].tail(1))
+            ax.bar(dataframe["date"], dataframe["recovered"], color="green")
+            ax.text(
+                0.01,
+                0.78,
+                f"Recov:{recoverednum}",
+                transform=ax.transAxes,
+                size=8,
+                color="green")
         ax.axhline(10000, color="red", ls=":", alpha=0.4)
         ax.axhline(5000, color="darkblue", ls=":", alpha=0.4)
         ax.text(
@@ -60,13 +68,6 @@ def covid_country(country):
             transform=ax.transAxes,
             size=8,
             color="red")
-        ax.text(
-            0.01,
-            0.78,
-            f"Recov:{recovered}",
-            transform=ax.transAxes,
-            size=8,
-            color="green")
         ax.set_xticklabels(dataframe["date"], rotation=45, ha="right", size=8)
         ax.xaxis.set_major_formatter(formatter)
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
@@ -127,7 +128,7 @@ def carga_datos(url):
     data.drop(index=data[data["CCAA"] == "Total"].index, inplace=True)
     data = pd.melt(data, "CCAA")
     data.rename(columns={"variable": "date"}, inplace=True)
-    data["date"] = pd.to_datetime(data["date"], format="%d/%m/%Y")
+    data["date"] = pd.to_datetime(data["date"], format="%Y/%m/%d")
     return data
 
 
@@ -156,3 +157,45 @@ df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y")
 top9CCAA = df[df["date"] == df["date"].max()].groupby(
     "Country").sum().nlargest(9, "confirmed").index
 df_top9 = df[df["Country"].isin(top9CCAA)]
+
+"""
+Spanish confirmed and deceased by gender and age group
+"""
+
+df = pd.read_csv(
+    "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/nacional_covid19_rango_edad.csv")
+df.drop(index=df[df["rango_edad"] == "Total"].index, axis=1, inplace=True)
+df = df[df["fecha"] == df["fecha"].max()]
+
+fig, ax = plt.subplots()
+rect1 = ax.barh(df.loc[df["sexo"] == "hombres", "rango_edad"],
+                df.loc[df["sexo"] == "hombres", "casos_confirmados"],
+                label="male", color="darkgrey", alpha=0.7, edgecolor="black")
+rect2 = ax.barh(df.loc[df["sexo"] == "mujeres", "rango_edad"],
+                df.loc[df["sexo"] == "mujeres", "casos_confirmados"] * -1,
+                label="female", color="darkgrey", alpha=0.3, edgecolor="black")
+rect3 = ax.barh(df.loc[df["sexo"] == "hombres", "rango_edad"],
+                df.loc[df["sexo"] == "hombres", "fallecidos"],
+                label="deceased", color="red", alpha=0.5, edgecolor="black")
+rect4 = ax.barh(df.loc[df["sexo"] == "mujeres", "rango_edad"],
+                df.loc[df["sexo"] == "mujeres", "fallecidos"] * -1,
+                color="red", alpha=0.5, edgecolor="black")
+
+
+def autolabel(rects, offset=(-15, 0)):
+    for rect in rects:
+        width = rect.get_width()
+        ax.annotate("{}".format(abs(width)),
+                    xy=(width, rect.get_y() + rect.get_height() / 2),
+                    xytext=offset,
+                    textcoords="offset points",
+                    ha="center", va="center")
+
+
+autolabel(rect1)
+autolabel(rect2, offset=(15, 0))
+ax.set_xticklabels([int(abs(x)) for x in ax.get_xticks()])
+plt.legend()
+plt.suptitle(
+    "Spanish confirmed and deceased cases by age and gender\n (based on sample of confirmed cases)")
+plt.show()
