@@ -54,10 +54,10 @@ df.drop_duplicates(inplace=True)
 df = df[df["Country"] != "US"]
 
 top9 = df[df["date"] == df["date"].max()].groupby(
-    "Country")["confirmed"].sum().nlargest(9).index
+    "Country")["confirmed"].sum().nlargest(9).index.to_list()
+top9US = us_df[us_df["date"] == us_df["date"].max()].groupby("Country")["confirmed"].sum().nlargest(9).index.to_list()
 
-
-def covid_country(country, recovered=True):
+def covid_country(country, recovered=True, upper = 100000, lower = 50000):
 
     lastday = df["date"].max().strftime("%Y-%m-%d")
 
@@ -82,21 +82,23 @@ def covid_country(country, recovered=True):
         if recovered == True:
             recoverednum = int(dataframe["recovered"].tail(1))
             ax.bar(dataframe["date"], dataframe["recovered"], color="green")
-            ax.text(
-                0.01,
-                0.78,
+            ax.annotate(
                 f"Recov:{recoverednum} ({recovincrease})",
-                transform=ax.transAxes,
-                size=8,
+                xy=(0.05,0.8),
+                xycoords="axes fraction",
+                fontsize=8,
+                ha="left",
+                va="bottom",
                 color="green")
-        ax.axhline(100000, color="red", ls=":", alpha=0.4)
-        ax.axhline(50000, color="darkblue", ls=":", alpha=0.4)
-        ax.text(
-            0.01,
-            0.9,
+        ax.axhline(upper, color="red", ls=":", alpha=0.4)
+        ax.axhline(lower, color="darkblue", ls=":", alpha=0.4)
+        ax.annotate(
             f"Dead:{deaths} ({deathincrease})",
-            transform=ax.transAxes,
-            size=8,
+            xy=(0.05,0.9),
+            xycoords="axes fraction",
+            fontsize=8,
+            ha="left",
+            va="bottom",
             color="red")
         ax.set_xticklabels(dataframe["date"], size=8, rotation=45, ha="right")
         ax.xaxis.set_major_formatter(formatter)
@@ -106,7 +108,7 @@ def covid_country(country, recovered=True):
             size=9)
 
     if isinstance(country, str):
-        data = df[df["Country"] == country]
+        data = df[(df["Country"] == country) & (df["confirmed"] > 10)]
         fig, ax = plt.subplots()
         plotting(data)
         fig.suptitle(
@@ -135,10 +137,10 @@ def covid_country(country, recovered=True):
         else:
             fig, axes = plt.subplots(n, m)
         for ax, country in zip(axes.flatten(), countries):
-            data = df[df["Country"] == country]
+            data = df[(df["Country"] == country) & (df["confirmed"] > 10)]
             plotting(data)
 
-        plt.tight_layout(w_pad=-2, h_pad=1)
+        plt.tight_layout(w_pad=-3, h_pad=1)
         fig.suptitle(
             f"COVID-19 infected population by Country/Region. Top 9 by volume\n Last update: {lastday}")
         plt.subplots_adjust(left=0.09, bottom=0.16, right=0.94, top=0.87)
@@ -235,10 +237,11 @@ plt.show()
 Death daily evolution
 """
 
+df_top9 = df[df["Country"].isin(top9)]
 df_test = pd.crosstab(
     df_top9.date,
     df_top9.Country,
-    values=df_top9.deaths,
+    values=df_top9.confirmed,
     aggfunc="sum").diff().dropna()
 
 text = pd.DataFrame(df_test[-1:].T).unstack().sort_values()
@@ -292,7 +295,7 @@ plt.subplots_adjust(
     wspace=0.2)
 plt.show()
 
-
+import seaborn as sns
 fig, ax = plt.subplots()
 sns.heatmap(data=df_test[-20:].T,
             square=True,  # make cells square
