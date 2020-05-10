@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
+import datetime as dt
 data = pd.read_json("https://pomber.github.io/covid19/timeseries.json")
 formatter = mdates.DateFormatter("%d-%m")
 
@@ -55,9 +56,11 @@ df = df[df["Country"] != "US"]
 
 top9 = df[df["date"] == df["date"].max()].groupby(
     "Country")["confirmed"].sum().nlargest(9).index.to_list()
-top9US = us_df[us_df["date"] == us_df["date"].max()].groupby("Country")["confirmed"].sum().nlargest(9).index.to_list()
+top9US = us_df[us_df["date"] == us_df["date"].max()].groupby(
+    "Country")["confirmed"].sum().nlargest(9).index.to_list()
 
-def covid_country(country, recovered=True, upper = 100000, lower = 50000):
+
+def covid_country(country, recovered=True, upper=100000, lower=50000):
 
     lastday = df["date"].max().strftime("%Y-%m-%d")
 
@@ -84,7 +87,7 @@ def covid_country(country, recovered=True, upper = 100000, lower = 50000):
             ax.bar(dataframe["date"], dataframe["recovered"], color="green")
             ax.annotate(
                 f"Recov:{recoverednum} ({recovincrease})",
-                xy=(0.05,0.8),
+                xy=(0.05, 0.8),
                 xycoords="axes fraction",
                 fontsize=8,
                 ha="left",
@@ -94,7 +97,7 @@ def covid_country(country, recovered=True, upper = 100000, lower = 50000):
         ax.axhline(lower, color="darkblue", ls=":", alpha=0.4)
         ax.annotate(
             f"Dead:{deaths} ({deathincrease})",
-            xy=(0.05,0.9),
+            xy=(0.05, 0.9),
             xycoords="axes fraction",
             fontsize=8,
             ha="left",
@@ -241,7 +244,7 @@ df_top9 = df[df["Country"].isin(top9)]
 df_test = pd.crosstab(
     df_top9.date,
     df_top9.Country,
-    values=df_top9.confirmed,
+    values=df_top9.deaths,
     aggfunc="sum").diff().dropna()
 
 text = pd.DataFrame(df_test[-1:].T).unstack().sort_values()
@@ -295,7 +298,6 @@ plt.subplots_adjust(
     wspace=0.2)
 plt.show()
 
-import seaborn as sns
 fig, ax = plt.subplots()
 sns.heatmap(data=df_test[-20:].T,
             square=True,  # make cells square
@@ -346,3 +348,96 @@ def spacing(data):
         round += 1
         df["final"] = df["value2"].sub(original_value["value"])
     return df
+
+
+def rolling_14(countries):
+
+    df_test = df[df["Country"].isin(countries)]
+    df_test.sort_values(["Country", "date"], inplace=True)
+    df_test["diff"] = df_test.groupby("Country")["confirmed"].diff()
+    df_test["rolling14"] = df_test.groupby(
+        "Country")["diff"].apply(lambda x: x.rolling(14).mean())
+    df_test = df_test.melt(id_vars=["Country", "date"])
+    df_test = df_test[df_test["variable"].isin(["diff", "rolling14"])]
+    df_test = df_test[df_test["date"] > "2020-02-20"]
+    df_test = df_test.reset_index()
+    df_test.drop(df_test[(df_test["Country"] == "Spain") &
+                         (df_test["value"] < 0)].index, inplace=True)
+    df_test.drop(df_test[(df_test["Country"] == "France") & (
+        df_test["value"] == df_test["value"].max())].index, inplace=True)
+
+    lockdown_dict = {
+       "New York": dt.datetime(2020, 3, 20),
+       "Spain": dt.datetime(2020, 3, 14),
+       "Italy": dt.datetime(2020, 3, 9),
+       "France": dt.datetime(2020, 3, 17),
+       "Germany": dt.datetime(2020, 3, 23),
+       "Brazil": dt.datetime(2020, 3, 17),
+       "Russia": dt.datetime(2020, 3, 28),
+       "New Jersey": dt.datetime(2020, 3, 20),
+       "United Kingdom": dt.datetime(2020, 3, 25)
+    }
+
+    formatter = mdates.DateFormatter("%d-%m")
+
+    fig, ax = plt.subplots(3, 3, sharex=True, sharey=False)
+    for ax, country in zip(ax.flatten(), countries):
+        data = df_test[df_test["Country"] == country]
+        date = str(df_test["date"].max()).split()[0]
+        sns.lineplot(
+            x="date",
+            y="value",
+            data=data[data["variable"] == "diff"],
+            ax=ax,
+            alpha=0.3,
+            color="black",
+            lw=0.5
+        )
+        sns.lineplot(
+            x="date",
+            y="value",
+            data=data[data["variable"] == "rolling14"],
+            ax=ax
+        )
+        ax.set_xticklabels(data.index, size=8, rotation=45, ha="right")
+        ax.xaxis.set_major_formatter(formatter)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(7))
+        ax.set_title(f"{country}")
+        ax.set_ylabel("")
+        ax.set_xlabel("")
+        if(country in top9):
+            lockdown_date = lockdown_dict.get(country)
+            lockdown_date_14 = lockdown_date + dt.timedelta(days=14)
+            ax.axhline(5000, ls="-.", color="black", alpha=0.3, lw=0.5)
+            ax.axhline(10000, ls="-.", color="black", alpha=0.4, lw=0.5)
+            ax.axvline(lockdown_date, color="red", ls=":", lw=0.5, alpha=0.7)
+            ax.axvline(
+                lockdown_date_14,
+                color="green",
+                ls=":",
+                lw=0.5,
+                alpha=0.7)
+            ax.annotate(
+                "lockdown",
+                xy=(lockdown_date, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
+                xytext=(-10, 0),
+                textcoords="offset pixels", rotation=90, size=8, color="red",
+                alpha=0.5, va="center")
+            ax.annotate(
+                "lockdown effects",
+                xy=(lockdown_date_14, (ax.get_ylim()[0] + ax.get_ylim()[1]) /
+                    2),
+                xytext=(-10, 0),
+                textcoords="offset pixels", rotation=90, size=8, color="green",
+                alpha=0.5, va="center")
+    plt.subplots_adjust(
+        left=0.09,
+        bottom=0.11,
+        right=0.94,
+        top=0.87,
+        hspace=0.30,
+        wspace=0.21)
+    fig.suptitle(
+        "Daily evolution of confirmed cases and 14 day rolling average\n for top 9 countries/regions by confirmed cases")
+    fig.text(0.01, 0.01, f"Updated on {date}")
+    plt.show()
