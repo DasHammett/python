@@ -106,6 +106,8 @@ class Weather(City):
         df = pd.DataFrame.from_dict(forecast_dict).transpose()
         df.columns = df.loc["time"]
         df = df.drop(labels = ["time","icon"], axis = 0)
+        df.columns = pd.to_datetime(df.columns)
+        df.columns = [str(col).split()[0] + " ("+str(col.strftime("%a"))+")" for col in df.columns]
         percent = ["moonPhase", "precipProbability",  "humidity", "cloudCover"]
         df.loc[percent] *= 100
         df.loc[percent] = df.loc[percent].astype(int)
