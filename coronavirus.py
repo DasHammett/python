@@ -273,7 +273,6 @@ for col in df_test.columns:
         markeredgecolor=None)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    #ax.annotate("{}".format(col),xy=(plt.xticks()[0][-1], df_test[col].iloc[-1]),xytext=(5,0), textcoords="offset pixels")
     ax.annotate("{}".format(col),
                 xy=(df_test.index.max(), df_test[col].iloc[-1]),
                 xytext=(25, text.loc[text["Country"] == col]["test"]-2),
@@ -355,29 +354,28 @@ def rolling_14(countries):
     df_test = df[df["Country"].isin(countries)]
     df_test.sort_values(["Country", "date"], inplace=True)
     df_test["diff"] = df_test.groupby("Country")["confirmed"].diff()
-    df_test["rolling14"] = df_test.groupby(
-        "Country")["diff"].apply(lambda x: x.rolling(14).mean())
+    df_test["rolling14"] = df_test.groupby("Country")["diff"].apply(lambda x: x.rolling(14).mean())
     df_test = df_test.melt(id_vars=["Country", "date"])
     df_test = df_test[df_test["variable"].isin(["diff", "rolling14"])]
     df_test = df_test[df_test["date"] > "2020-02-20"]
     df_test = df_test.reset_index()
-    df_test.drop(df_test[(df_test["Country"] == "Spain") &
-                         (df_test["value"] < 0)].index, inplace=True)
-    df_test.drop(df_test[(df_test["Country"] == "France") &
-                         (df_test["value"] == df_test["value"].max())].index, inplace=True)
     df_test["cumsum"] = df_test[df_test["variable"] == "diff"].groupby("Country")["value"].cumsum()
 
-    dfs = pd.read_html("https://en.wikipedia.org/wiki/National_responses_to_the_COVID-19_pandemic", header = 1)
-    df_lockdown = dfs[1].iloc[0:-1,0:3]
-    df_lockdown.loc[:,"Start date"] = pd.to_datetime(df_lockdown["Start date"].apply(lambda x: x.split("[")[0]))
+    dfs = pd.read_html("https://en.wikipedia.org/wiki/National_responses_to_the_COVID-19_pandemic", header=1)
+    df_lockdown = dfs[1].iloc[0:-1, 0:3]
+    df_lockdown.loc[:, "Start date"] = pd.to_datetime(df_lockdown["Start date"].apply(lambda x: x.split("[")[0]))
 
     formatter = mdates.DateFormatter("%d-%m")
+
+    max_value = int(df_test["value"].max())
+    upper_bound = round(max_value/2, (len(str(max_value))-1) * -1)
+    lower_bound = upper_bound/2
 
     fig, ax = plt.subplots(3, 3, sharex=True, sharey=False)
     for ax, country in zip(ax.flatten(), countries):
         data = df_test[df_test["Country"] == country]
         date = str(df_test["date"].max()).split()[0]
-        max_confirmed = int(data["cumsum"].max())
+        max_confirmed = "{:,.0f}".format(int(data["cumsum"].max())).replace(",", ".")
         sns.lineplot(
             x="date",
             y="value",
@@ -385,27 +383,33 @@ def rolling_14(countries):
             ax=ax,
             alpha=0.3,
             color="black",
-            lw=0.5
+            lw=0.5,
+            label="daily"
         )
         sns.lineplot(
             x="date",
             y="value",
             data=data[data["variable"] == "rolling14"],
-            ax=ax
+            ax=ax,
+            label="rolling 14d"
         )
         ax.set_xticklabels(data.index, size=8, rotation=45, ha="right")
         ax.xaxis.set_major_formatter(formatter)
         ax.xaxis.set_major_locator(ticker.MultipleLocator(7))
-        ax.set_title(f"{country} - {max_confirmed} confirmed", size = 10)
+        ax.set_title(f"{country} - {max_confirmed} confirmed", size=10)
         ax.set_ylabel("")
         ax.set_xlabel("")
+        ax.axhline(lower_bound, ls="-.", color="black", alpha=0.3, lw=0.5)
+        ax.axhline(upper_bound, ls="-.", color="black", alpha=0.4, lw=0.5)
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend_.remove()
         try:
-            lockdown_date = df_lockdown.loc[(df_lockdown["Countries and territories"] == country) | (df_lockdown["Place"] == country), "Start date"].iloc[0]
+            lockdown_date = df_lockdown.loc[(df_lockdown["Countries and territories"] == country) |
+                                            (df_lockdown["Place"] == country),
+                                            "Start date"].iloc[0]
         except IndexError:
             continue
         lockdown_date_14 = lockdown_date + dt.timedelta(days=14)
-        ax.axhline(5000, ls="-.", color="black", alpha=0.3, lw=0.5)
-        ax.axhline(10000, ls="-.", color="black", alpha=0.4, lw=0.5)
         ax.axvline(lockdown_date, color="red", ls=":", lw=1, alpha=0.7)
         ax.axvline(lockdown_date_14, color="green", ls=":", lw=1, alpha=0.7)
         ax.annotate(
@@ -435,9 +439,16 @@ def rolling_14(countries):
         top=0.87,
         hspace=0.30,
         wspace=0.21)
+    fig.legend(
+        handles,
+        labels,
+        loc="upper left",
+        frameon=True,
+        ncol=2,
+        bbox_to_anchor=(
+            0.01,
+            0.99))
     fig.suptitle(
         "Daily evolution of confirmed cases and 14 day rolling average\n for top 9 countries/regions by confirmed cases")
     fig.text(0.01, 0.01, f"Updated on {date}")
     plt.show()
-
-
