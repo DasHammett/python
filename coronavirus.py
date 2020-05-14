@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
-import datetime as dt
+import lock_datetime as dt
 data = pd.read_json("https://pomber.github.io/covid19/timeseries.json")
 formatter = mdates.DateFormatter("%d-%m")
 
@@ -151,12 +151,9 @@ def covid_country(country, recovered=True, upper=100000, lower=50000):
             axes.flat[-i].set_visible(False)
         plt.show()
 
-
 """
 COVID-19 for Spain, by region
 """
-
-
 def carga_datos(url):
     data = pd.read_csv(url)
     data.drop(columns="cod_ine", inplace=True)
@@ -165,7 +162,6 @@ def carga_datos(url):
     data.rename(columns={"variable": "date"}, inplace=True)
     data["date"] = pd.to_datetime(data["date"], format="%Y/%m/%d")
     return data
-
 
 urls = ["https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_casos.csv",
         "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_altas.csv",
@@ -216,7 +212,6 @@ rect4 = ax.barh(df.loc[df["sexo"] == "mujeres", "rango_edad"],
                 df.loc[df["sexo"] == "mujeres", "fallecidos"] * -1,
                 color="red", alpha=0.5, edgecolor="black")
 
-
 def autolabel(rects, offset=(-15, 0)):
     for rect in rects:
         width = rect.get_width()
@@ -226,7 +221,6 @@ def autolabel(rects, offset=(-15, 0)):
                     textcoords="offset points",
                     ha="center", va="center")
 
-
 autolabel(rect1)
 autolabel(rect2, offset=(15, 0))
 ax.set_xticklabels([int(abs(x)) for x in ax.get_xticks()])
@@ -234,120 +228,6 @@ plt.legend()
 plt.suptitle(
     "Spanish confirmed and deceased cases by age and gender\n (based on sample of confirmed cases)")
 plt.show()
-
-
-"""
-Death daily evolution
-"""
-
-df_top9 = df[df["Country"].isin(top9)]
-df_test = pd.crosstab(
-    df_top9.date,
-    df_top9.Country,
-    values=df_top9.deaths,
-    aggfunc="sum").diff().dropna()
-
-text = pd.DataFrame(df_test[-1:].T).unstack().sort_values()
-text = text.to_frame(name="value")
-text["Diff"] = text.diff().fillna(0)
-text.reset_index(inplace=True)
-
-text["test"] = np.where(
-    (text["Diff"].diff().fillna(0) > 0) & (
-        text["Diff"] < 10), 5, np.where(
-            (text["Diff"].diff().fillna(0) < 0) & (
-                text["Diff"] < 10), -10, 0))
-text["test"] = np.where((text["Diff"] == 0) & (
-    text["test"].shift(-1) < 0), -10, text["test"])
-
-locator = mdates.AutoDateLocator()
-formatter = mdates.ConciseDateFormatter(locator)
-fig, ax = plt.subplots()
-for col in df_test.columns:
-    ax.plot(
-        df_test.index,
-        df_test[col],
-        marker="o",
-        markersize=4,
-        markerfacecolor="white",
-        markeredgecolor=None)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.annotate("{}".format(col),
-                xy=(df_test.index.max(), df_test[col].iloc[-1]),
-                xytext=(25, text.loc[text["Country"] == col]["test"]-2),
-                # xytext=(20,0),
-                textcoords="offset pixels",
-                arrowprops=dict(
-                    color=ax.get_lines()[-1].get_c(),
-                    arrowstyle="-|>", linewidth=0.5)
-                )
-    ax.xaxis.set_major_locator(locator)
-    ax.xaxis.set_major_formatter(formatter)
-    ax.xaxis.set_minor_locator(mdates.DayLocator())
-plt.xlim([df_test.index.min(), df_test.index.max()+datetime.timedelta(days=1)])
-plt.title("# COVID-19 deaths evolution\nTop9 infected Countries")
-plt.tight_layout()
-plt.subplots_adjust(
-    left=0.09,
-    bottom=0.12,
-    right=0.88,
-    top=0.89,
-    hspace=0.2,
-    wspace=0.2)
-plt.show()
-
-fig, ax = plt.subplots()
-sns.heatmap(data=df_test[-20:].T,
-            square=True,  # make cells square
-            cbar_kws={'fraction': 0.01},  # shrink colour bar
-            cmap='OrRd',  # use orange/red colour map
-            linewidth=1,
-            annot=True,
-            fmt=".0f",
-            annot_kws={"size": 8}
-            )
-ax.set_xticklabels(df_test[-20:].T.columns.strftime('%d-%m'))
-ax.set_xlabel("")
-ax.set_ylabel("")
-plt.title(
-    "Number of COVID-19 deceased for the last 20 days.\n Top countries by infection")
-plt.xlabel()
-plt.ylabel()
-plt.show()
-
-
-distancia = pd.DataFrame(text[["Country", "value"]].copy())
-distancia["Diff"] = distancia["value"].diff().fillna(0)
-distancia["test"] = distancia["value"].diff().sub(
-    distancia["value"].diff(-1)).fillna(0) / 2
-
-distancia["test2"] = pd.Series(np.where((distancia["Diff"] < 10) & (distancia["Diff"].shift(-1) > distancia["Diff"].shift()), distancia["test"],
-                                        np.where((distancia["Diff"] < 10) & (distancia["Diff"].shift(-1) < distancia["Diff"].shift()), -distancia["test"],
-                                                 np.where((distancia["Diff"] == 0) & (distancia["Diff"].shift(-1) < distancia["Diff"].shift(-2)), distancia["value"]/2,
-                                                          np.where((distancia["Diff"] == 0) & (distancia["Diff"].shift(-1) > distancia["Diff"].shift(-2)), -distancia["value"]/2,
-                                                                   0)))))
-
-
-def spacing(data):
-    df = pd.DataFrame(data[["Country", "value"]].copy())
-    original_value = df[["value"]]
-    round = 0
-    while round < 6:
-        if round > 0:
-            df["value"] = df["value2"]
-        df["Diff"] = df["value"].diff().fillna(0)
-        df["test"] = df["value"].diff().sub(df["value"].diff(-1)).fillna(0)/2
-        df["test2"] = pd.Series(np.where((df["Diff"] < 10) & (df["Diff"].shift(-1) > df["Diff"].shift()), df["test"],
-                                         np.where((df["Diff"] < 10) & (df["Diff"].shift(-1) < df["Diff"].shift()), -df["test"],
-                                                  np.where((df["Diff"] == 0) & (df["Diff"].shift(-1) < df["Diff"].shift(-2)), df["value"]/2,
-                                                           np.where((df["Diff"] == 0) & (df["Diff"].shift(-1) > df["Diff"].shift(-2)), -df["value"]/2,
-                                                                    0)))))
-        df["value2"] = df["value"] + df["test2"]
-        round += 1
-        df["final"] = df["value2"].sub(original_value["value"])
-    return df
-
 
 def rolling_14(countries):
 
@@ -410,44 +290,20 @@ def rolling_14(countries):
         except IndexError:
             continue
         lockdown_date_14 = lockdown_date + dt.timedelta(days=14)
-        ax.axvline(lockdown_date, color="red", ls=":", lw=1, alpha=0.7)
-        ax.axvline(lockdown_date_14, color="green", ls=":", lw=1, alpha=0.7)
-        ax.annotate(
-            "lockdown",
-            xy=(lockdown_date, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
-            xytext=(-10, 0),
-            textcoords="offset pixels",
-            rotation=90,
-            size=8,
-            color="red",
-            alpha=0.5,
-            va="center")
-        ax.annotate(
-            "lockdown +14d",
-            xy=(lockdown_date_14, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
-            xytext=(-10, 0),
-            textcoords="offset pixels",
-            rotation=90,
-            size=8,
-            color="green",
-            alpha=0.5,
-            va="center")
-    plt.subplots_adjust(
-        left=0.09,
-        bottom=0.11,
-        right=0.94,
-        top=0.87,
-        hspace=0.30,
-        wspace=0.21)
-    fig.legend(
-        handles,
-        labels,
-        loc="upper left",
-        frameon=True,
-        ncol=2,
-        bbox_to_anchor=(
-            0.01,
-            0.99))
+        for lock_date, text, color in zip([lockdown_date,lockdown_date_14],["lockdown","lockdown_14"],["red","green"]):
+            ax.annotate(
+                text,
+                xy=(lock_date, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
+                xytext=(-10, 0),
+                textcoords="offset pixels",
+                rotation=90,
+                size=8,
+                color=color,
+                alpha=0.5,
+                va="center")
+            ax.axvline(lock_date, color = color, ls=":", lw=1, alpha = 0.7)
+    plt.subplots_adjust(left=0.09, bottom=0.11, right=0.94, top=0.87, hspace=0.30, wspace=0.21)
+    fig.legend(handles, labels, loc="upper left", frameon=True, ncol=2, bbox_to_anchor=( 0.01, 0.99))
     fig.suptitle(
         "Daily evolution of confirmed cases and 14 day rolling average\n for top 9 countries/regions by confirmed cases")
     fig.text(0.01, 0.01, f"Updated on {date}")
