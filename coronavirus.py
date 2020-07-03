@@ -13,7 +13,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
-import lock_datetime as dt
+import datetime as dt
+
 data = pd.read_json("https://pomber.github.io/covid19/timeseries.json")
 formatter = mdates.DateFormatter("%d-%m")
 
@@ -60,12 +61,12 @@ top9US = us_df[us_df["date"] == us_df["date"].max()].groupby(
     "Country")["confirmed"].sum().nlargest(9).index.to_list()
 
 
-def covid_country(country, recovered=True, upper=100000, lower=50000):
+def covid_country(country, recovered=True, upper=300000, lower=100000):
 
     lastday = df["date"].max().strftime("%Y-%m-%d")
 
     def plotting(dataframe):
-        increase = "+"+str(int(dataframe["confirmed"].diff().tail(1)))
+        increase = "{:+d}".format(int(dataframe["confirmed"].diff().tail(1)))
         last = dataframe[dataframe["date"] ==
                          dataframe["date"].max()]["confirmed"].sum()
         deaths = int(dataframe["deaths"].tail(1))
@@ -105,13 +106,13 @@ def covid_country(country, recovered=True, upper=100000, lower=50000):
             color="red")
         ax.set_xticklabels(dataframe["date"], size=8, rotation=45, ha="right")
         ax.xaxis.set_major_formatter(formatter)
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(7))
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(15))
         ax.set_title(
             f"{country} - # infected: {last}\n ({increase} from previous day)",
             size=9)
 
     if isinstance(country, str):
-        data = df[(df["Country"] == country) & (df["confirmed"] > 10)]
+        data = df[(df["Country"] == country) & (df["confirmed"] > 100)]
         fig, ax = plt.subplots()
         plotting(data)
         fig.suptitle(
@@ -140,13 +141,13 @@ def covid_country(country, recovered=True, upper=100000, lower=50000):
         else:
             fig, axes = plt.subplots(n, m)
         for ax, country in zip(axes.flatten(), countries):
-            data = df[(df["Country"] == country) & (df["confirmed"] > 10)]
+            data = df[(df["Country"] == country) & (df["confirmed"] > 100)]
             plotting(data)
 
         plt.tight_layout(w_pad=-3, h_pad=1)
         fig.suptitle(
             f"COVID-19 infected population by Country/Region. Top 9 by volume\n Last update: {lastday}")
-        plt.subplots_adjust(left=0.09, bottom=0.16, right=0.94, top=0.87)
+        plt.subplots_adjust(left=0.09, bottom=0.08, right=0.94, top=0.87, wspace = 0.29, hspace = 0.37)
         for i in range(1, over_plots+1):
             axes.flat[-i].set_visible(False)
         plt.show()
@@ -231,15 +232,15 @@ plt.show()
 
 def rolling_14(countries):
 
-    df_test = df[df["Country"].isin(countries)]
+    df_test = df.loc[df["Country"].isin(countries)].copy()
     df_test.sort_values(["Country", "date"], inplace=True)
     df_test["diff"] = df_test.groupby("Country")["confirmed"].diff()
     df_test["rolling14"] = df_test.groupby("Country")["diff"].apply(lambda x: x.rolling(14).mean())
     df_test = df_test.melt(id_vars=["Country", "date"])
-    df_test = df_test[df_test["variable"].isin(["diff", "rolling14"])]
-    df_test = df_test[df_test["date"] > "2020-02-20"]
+    df_test = df_test.loc[df_test["variable"].isin(["diff", "rolling14"])]
+    df_test = df_test.loc[df_test["date"] > "2020-02-20"]
     df_test = df_test.reset_index()
-    df_test["cumsum"] = df_test[df_test["variable"] == "diff"].groupby("Country")["value"].cumsum()
+    df_test["cumsum"] = df_test.loc[df_test["variable"] == "diff"].groupby("Country")["value"].cumsum()
 
     dfs = pd.read_html("https://en.wikipedia.org/wiki/National_responses_to_the_COVID-19_pandemic", header=1)
     df_lockdown = dfs[1].iloc[0:-1, 0:3]
@@ -253,13 +254,13 @@ def rolling_14(countries):
 
     fig, ax = plt.subplots(3, 3, sharex=True, sharey=False)
     for ax, country in zip(ax.flatten(), countries):
-        data = df_test[df_test["Country"] == country]
+        data = df_test.loc[df_test["Country"] == country]
         date = str(df_test["date"].max()).split()[0]
         max_confirmed = "{:,.0f}".format(int(data["cumsum"].max())).replace(",", ".")
         sns.lineplot(
             x="date",
             y="value",
-            data=data[data["variable"] == "diff"],
+            data=data.loc[(data["variable"] == "diff") & (data["value"] > 0)],
             ax=ax,
             alpha=0.3,
             color="black",
@@ -269,13 +270,13 @@ def rolling_14(countries):
         sns.lineplot(
             x="date",
             y="value",
-            data=data[data["variable"] == "rolling14"],
+            data=data.loc[(data["variable"] == "rolling14") & (data["value"] > 0)],
             ax=ax,
             label="rolling 14d"
         )
         ax.set_xticklabels(data.index, size=8, rotation=45, ha="right")
         ax.xaxis.set_major_formatter(formatter)
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(7))
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(15))
         ax.set_title(f"{country} - {max_confirmed} confirmed", size=10)
         ax.set_ylabel("")
         ax.set_xlabel("")
@@ -290,7 +291,7 @@ def rolling_14(countries):
         except IndexError:
             continue
         lockdown_date_14 = lockdown_date + dt.timedelta(days=14)
-        for lock_date, text, color in zip([lockdown_date,lockdown_date_14],["lockdown","lockdown_14"],["red","green"]):
+        for lock_date, text, color in zip([lockdown_date,lockdown_date_14],["lockdown","lockdown +14d"],["red","green"]):
             ax.annotate(
                 text,
                 xy=(lock_date, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
@@ -308,3 +309,50 @@ def rolling_14(countries):
         "Daily evolution of confirmed cases and 14 day rolling average\n for top 9 countries/regions by confirmed cases")
     fig.text(0.01, 0.01, f"Updated on {date}")
     plt.show()
+
+from scipy.optimize import curve_fit
+
+country = "Brazil"
+df_brazil = df.loc[(df["Country"] == country) & (df["confirmed"] > 0)]
+brazil_max = "{:,.0f}".format(int(df_brazil["confirmed"].max())).replace(",", ".")
+
+def exponential(x,n,r,a):
+    #return n * (1 + r)**x # Exponential model
+    #return n / (1 + np.exp(-(x-r)/a)) # Logistic model
+    return n * np.exp(-a*np.exp(-r*x)) # Gompertz model
+    #return n * np.exp(-np.exp(a-r*x)) # Gompertz model
+
+x = np.arange(1,df_brazil.shape[0]+1)
+y = df_brazil["confirmed"].values
+
+popt, pcov = curve_fit(exponential, x, y, p0=(10000,0.01,1), maxfev = 50000)
+
+inflection_day = round(np.log(popt[2])/popt[1])
+
+x2 = np.append(x, np.arange(x.size +1, x.size + 300))
+
+d = {x:exponential(x,*popt) for x in x2}
+day_over_1M = [k for k in d.keys() if d[k] > 1e6][0]
+day_over_2M = [k for k in d.keys() if d[k] > 2e6][0]
+diff_days = day_over_1M - x.max()
+diff_days_2M = day_over_2M - x.max()
+
+n = round(popt[0],2)
+r = round(popt[1],2)
+a = round(popt[2],2)
+
+plt.plot(x2, exponential(x2, *popt), "--", color = "black", alpha = 0.3)
+plt.plot(x, y)
+plt.axvline(inflection_day,color = "red", ls = ":", alpha = 0.7)
+plt.title(f"Cummulative confirmed cases for {country} and projection\nConfirmed cases: {brazil_max}")
+if popt[0] < 1e6:
+    pass
+else:
+    plt.annotate(f"Days until 1M confirmed cases: {diff_days}", xy=(0,0), xytext=(0.02,0.95), textcoords="axes fraction")
+    plt.annotate(f"Days until 2M confirmed cases: {diff_days_2M}", xy=(0,0), xytext=(0.02,0.9), textcoords="axes fraction")
+plt.annotate("Equation: " + r"{0}$e^{{ {{-{2}}} e^{{-{1}t}} }}$".format(n,r,a), xy=(0,0), xytext=(0.02,0.85), textcoords="axes fraction")
+plt.annotate("curve inflection",xy=(inflection_day,0),rotation = 90, xytext=(-15,190), textcoords="offset pixels", color = "red", alpha = 0.5)
+#plt.annotate(r"{0}$e^{{ -e^{{{{{1}}}-{2}t}} }}$".format(n,r,a), xy=(0,0), xytext=(0.50,0.05), textcoords="axes fraction", size = 14)
+plt.xlabel("Days since 1st confirmed case")
+plt.show()
+
