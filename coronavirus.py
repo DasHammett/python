@@ -7,6 +7,7 @@ Original en R disponible a: https://gitlab.com/acangros/coronavirus/-/blob/maste
 """
 
 
+from scipy.optimize import curve_fit
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -14,7 +15,6 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 import datetime as dt
-
 data = pd.read_json("https://pomber.github.io/covid19/timeseries.json")
 formatter = mdates.DateFormatter("%d-%m")
 
@@ -147,14 +147,23 @@ def covid_country(country, recovered=True, upper=300000, lower=100000):
         plt.tight_layout(w_pad=-3, h_pad=1)
         fig.suptitle(
             f"COVID-19 infected population by Country/Region. Top 9 by volume\n Last update: {lastday}")
-        plt.subplots_adjust(left=0.09, bottom=0.08, right=0.94, top=0.87, wspace = 0.29, hspace = 0.37)
+        plt.subplots_adjust(
+            left=0.09,
+            bottom=0.08,
+            right=0.94,
+            top=0.87,
+            wspace=0.29,
+            hspace=0.37)
         for i in range(1, over_plots+1):
             axes.flat[-i].set_visible(False)
         plt.show()
 
+
 """
 COVID-19 for Spain, by region
 """
+
+
 def carga_datos(url):
     data = pd.read_csv(url)
     data.drop(columns="cod_ine", inplace=True)
@@ -163,6 +172,7 @@ def carga_datos(url):
     data.rename(columns={"variable": "date"}, inplace=True)
     data["date"] = pd.to_datetime(data["date"], format="%Y/%m/%d")
     return data
+
 
 urls = ["https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_casos.csv",
         "https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_altas.csv",
@@ -213,6 +223,7 @@ rect4 = ax.barh(df.loc[df["sexo"] == "mujeres", "rango_edad"],
                 df.loc[df["sexo"] == "mujeres", "fallecidos"] * -1,
                 color="red", alpha=0.5, edgecolor="black")
 
+
 def autolabel(rects, offset=(-15, 0)):
     for rect in rects:
         width = rect.get_width()
@@ -222,6 +233,7 @@ def autolabel(rects, offset=(-15, 0)):
                     textcoords="offset points",
                     ha="center", va="center")
 
+
 autolabel(rect1)
 autolabel(rect2, offset=(15, 0))
 ax.set_xticklabels([int(abs(x)) for x in ax.get_xticks()])
@@ -230,21 +242,27 @@ plt.suptitle(
     "Spanish confirmed and deceased cases by age and gender\n (based on sample of confirmed cases)")
 plt.show()
 
+
 def rolling_14(countries):
 
     df_test = df.loc[df["Country"].isin(countries)].copy()
     df_test.sort_values(["Country", "date"], inplace=True)
     df_test["diff"] = df_test.groupby("Country")["confirmed"].diff()
-    df_test["rolling14"] = df_test.groupby("Country")["diff"].apply(lambda x: x.rolling(14).mean())
+    df_test["rolling14"] = df_test.groupby(
+        "Country")["diff"].apply(lambda x: x.rolling(14).mean())
     df_test = df_test.melt(id_vars=["Country", "date"])
     df_test = df_test.loc[df_test["variable"].isin(["diff", "rolling14"])]
     df_test = df_test.loc[df_test["date"] > "2020-02-20"]
     df_test = df_test.reset_index()
-    df_test["cumsum"] = df_test.loc[df_test["variable"] == "diff"].groupby("Country")["value"].cumsum()
+    df_test["cumsum"] = df_test.loc[df_test["variable"] == "diff"].groupby("Country")[
+                                                                           "value"].cumsum()
 
-    dfs = pd.read_html("https://en.wikipedia.org/wiki/National_responses_to_the_COVID-19_pandemic", header=1)
+    dfs = pd.read_html(
+        "https://en.wikipedia.org/wiki/National_responses_to_the_COVID-19_pandemic",
+        header=1)
     df_lockdown = dfs[1].iloc[0:-1, 0:3]
-    df_lockdown.loc[:, "Start date"] = pd.to_datetime(df_lockdown["Start date"].apply(lambda x: x.split("[")[0]))
+    df_lockdown.loc[:, "Start date"] = pd.to_datetime(
+        df_lockdown["Start date"].apply(lambda x: x.split("[")[0]))
 
     formatter = mdates.DateFormatter("%d-%m")
 
@@ -256,7 +274,9 @@ def rolling_14(countries):
     for ax, country in zip(ax.flatten(), countries):
         data = df_test.loc[df_test["Country"] == country]
         date = str(df_test["date"].max()).split()[0]
-        max_confirmed = "{:,.0f}".format(int(data["cumsum"].max())).replace(",", ".")
+        max_confirmed = "{:,.0f}".format(
+            int(data["cumsum"].max())).replace(
+            ",", ".")
         sns.lineplot(
             x="date",
             y="value",
@@ -270,7 +290,8 @@ def rolling_14(countries):
         sns.lineplot(
             x="date",
             y="value",
-            data=data.loc[(data["variable"] == "rolling14") & (data["value"] > 0)],
+            data=data.loc[(data["variable"] == "rolling14")
+                          & (data["value"] > 0)],
             ax=ax,
             label="rolling 14d"
         )
@@ -285,13 +306,19 @@ def rolling_14(countries):
         handles, labels = ax.get_legend_handles_labels()
         ax.legend_.remove()
         try:
-            lockdown_date = df_lockdown.loc[(df_lockdown["Countries and territories"] == country) |
+            lockdown_date = df_lockdown.loc[(
+                                             df_lockdown
+                                             ["Countries and territories"] ==
+                                             country) |
                                             (df_lockdown["Place"] == country),
                                             "Start date"].iloc[0]
         except IndexError:
             continue
         lockdown_date_14 = lockdown_date + dt.timedelta(days=14)
-        for lock_date, text, color in zip([lockdown_date,lockdown_date_14],["lockdown","lockdown +14d"],["red","green"]):
+        for lock_date, text, color in zip(
+            [lockdown_date, lockdown_date_14],
+            ["lockdown", "lockdown +14d"],
+                ["red", "green"]):
             ax.annotate(
                 text,
                 xy=(lock_date, (ax.get_ylim()[0] + ax.get_ylim()[1]) / 2),
@@ -302,57 +329,127 @@ def rolling_14(countries):
                 color=color,
                 alpha=0.5,
                 va="center")
-            ax.axvline(lock_date, color = color, ls=":", lw=1, alpha = 0.7)
-    plt.subplots_adjust(left=0.09, bottom=0.11, right=0.94, top=0.87, hspace=0.30, wspace=0.21)
-    fig.legend(handles, labels, loc="upper left", frameon=True, ncol=2, bbox_to_anchor=( 0.01, 0.99))
+            ax.axvline(lock_date, color=color, ls=":", lw=1, alpha=0.7)
+    plt.subplots_adjust(
+        left=0.09,
+        bottom=0.11,
+        right=0.94,
+        top=0.87,
+        hspace=0.30,
+        wspace=0.21)
+    fig.legend(
+        handles,
+        labels,
+        loc="upper left",
+        frameon=True,
+        ncol=2,
+        bbox_to_anchor=(
+            0.01,
+            0.99))
     fig.suptitle(
         "Daily evolution of confirmed cases and 14 day rolling average\n for top 9 countries/regions by confirmed cases")
     fig.text(0.01, 0.01, f"Updated on {date}")
     plt.show()
 
-from scipy.optimize import curve_fit
 
-country = "Brazil"
+country = "India"
 df_brazil = df.loc[(df["Country"] == country) & (df["confirmed"] > 0)]
-brazil_max = "{:,.0f}".format(int(df_brazil["confirmed"].max())).replace(",", ".")
+brazil_max = "{:,.0f}".format(
+    int(df_brazil["confirmed"].max())).replace(
+    ",", ".")
 
-def exponential(x,n,r,a):
-    #return n * (1 + r)**x # Exponential model
-    #return n / (1 + np.exp(-(x-r)/a)) # Logistic model
-    return n * np.exp(-a*np.exp(-r*x)) # Gompertz model
-    #return n * np.exp(-np.exp(a-r*x)) # Gompertz model
 
-x = np.arange(1,df_brazil.shape[0]+1)
+def exponential(x, n, r, a):
+    # return n * (1 + r)**x # Exponential model
+    # return n / (1 + np.exp(-(x-r)/a)) # Logistic model
+    return n * np.exp(-a*np.exp(-r*x))  # Gompertz model
+    # return n * np.exp(-np.exp(a-r*x)) # Gompertz model
+
+
+x = np.arange(1, df_brazil.shape[0]+1)
 y = df_brazil["confirmed"].values
 
-popt, pcov = curve_fit(exponential, x, y, p0=(10000,0.01,1), maxfev = 50000)
+popt, pcov = curve_fit(exponential, x, y, p0=(10000, 0.01, 1), maxfev=50000)
 
 inflection_day = round(np.log(popt[2])/popt[1])
 
-x2 = np.append(x, np.arange(x.size +1, x.size + 300))
+x2 = np.append(x, np.arange(x.size + 1, x.size + 300))
 
-d = {x:exponential(x,*popt) for x in x2}
+d = {x: exponential(x, *popt) for x in x2}
 day_over_1M = [k for k in d.keys() if d[k] > 1e6][0]
 day_over_2M = [k for k in d.keys() if d[k] > 2e6][0]
 diff_days = day_over_1M - x.max()
 diff_days_2M = day_over_2M - x.max()
 
-n = round(popt[0],2)
-r = round(popt[1],2)
-a = round(popt[2],2)
+n = round(popt[0], 2)
+r = round(popt[1], 2)
+a = round(popt[2], 2)
 
-plt.plot(x2, exponential(x2, *popt), "--", color = "black", alpha = 0.3)
+plt.plot(x2, exponential(x2, *popt), "--", color="black", alpha=0.3)
 plt.plot(x, y)
-plt.axvline(inflection_day,color = "red", ls = ":", alpha = 0.7)
-plt.title(f"Cummulative confirmed cases for {country} and projection\nConfirmed cases: {brazil_max}")
+plt.axvline(inflection_day, color="red", ls=":", alpha=0.7)
+plt.title(
+    f"Cummulative confirmed cases for {country} and projection\nConfirmed cases: {brazil_max}")
 if popt[0] < 1e6:
     pass
 else:
-    plt.annotate(f"Days until 1M confirmed cases: {diff_days}", xy=(0,0), xytext=(0.02,0.95), textcoords="axes fraction")
-    plt.annotate(f"Days until 2M confirmed cases: {diff_days_2M}", xy=(0,0), xytext=(0.02,0.9), textcoords="axes fraction")
-plt.annotate("Equation: " + r"{0}$e^{{ {{-{2}}} e^{{-{1}t}} }}$".format(n,r,a), xy=(0,0), xytext=(0.02,0.85), textcoords="axes fraction")
-plt.annotate("curve inflection",xy=(inflection_day,0),rotation = 90, xytext=(-15,190), textcoords="offset pixels", color = "red", alpha = 0.5)
-#plt.annotate(r"{0}$e^{{ -e^{{{{{1}}}-{2}t}} }}$".format(n,r,a), xy=(0,0), xytext=(0.50,0.05), textcoords="axes fraction", size = 14)
+    plt.annotate(
+        f"Days until 1M confirmed cases: {diff_days}", xy=(
+            0, 0), xytext=(
+            0.02, 0.95), textcoords="axes fraction")
+    plt.annotate(
+        f"Days until 2M confirmed cases: {diff_days_2M}", xy=(
+            0, 0), xytext=(
+            0.02, 0.9), textcoords="axes fraction")
+plt.annotate(
+    "Equation: " + r"{0}$e^{{ {{-{2}}} e^{{-{1}t}} }}$".format(n, r, a),
+    xy=(0, 0),
+    xytext=(0.02, 0.85),
+    textcoords="axes fraction")
+plt.annotate(
+    "curve inflection", xy=(inflection_day, 0),
+    rotation=90, xytext=(-15, 190),
+    textcoords="offset pixels", color="red", alpha=0.5)
+# plt.annotate(r"{0}$e^{{ -e^{{{{{1}}}-{2}t}} }}$".format(n,r,a),
+# xy=(0,0), xytext=(0.50,0.05), textcoords="axes fraction", size = 14)
 plt.xlabel("Days since 1st confirmed case")
 plt.show()
 
+
+def forecast(country):
+    from matplotlib.ticker import FuncFormatter
+
+    def exponential(x, n, r, a):
+        return n * np.exp(-a*np.exp(-r*x))  # Gompertz model
+
+    def millions(x, pos):
+        return "%1.0fM" % (x * 1e-6)
+
+    def dates(x, pos):
+        return np.datetime64(df_brazil["date"].iloc[0], "D") + int(x)
+    for i in country:
+        df_brazil = df.loc[(df["Country"] == i) & (df["confirmed"] > 0)]
+        brazil_max = "{:,.0f}".format(
+            int(df_brazil["confirmed"].max())).replace(
+            ",", ".")
+
+        x = np.arange(1, df_brazil.shape[0]+1)
+        y = df_brazil["confirmed"].values
+
+        popt, pcov = curve_fit(
+            exponential, x, y, p0=(
+                100000, 0.01, 1), maxfev=50000)
+        x2 = np.append(x, np.arange(x.size + 1, x.size + 300))
+
+        formatter_x = FuncFormatter(millions)
+        formatter_y = FuncFormatter(dates)
+
+        plt.plot(x2, exponential(x2, *popt), "--", color="black", alpha=0.3)
+        plt.plot(x, y, label=i)
+        plt.title(
+            f"COVID-19 cummulative confirmed cases for {country} and projection")
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(formatter_x)
+        ax.xaxis.set_major_formatter(formatter_y)
+    plt.legend()
+    plt.show()
