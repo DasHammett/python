@@ -373,7 +373,7 @@ popt, pcov = curve_fit(exponential, x, y, p0=(10000, 0.01, 1), maxfev=50000)
 
 inflection_day = round(np.log(popt[2])/popt[1])
 
-x2 = np.append(x, np.arange(x.size + 1, x.size + 300))
+x2 = np.append(x, np.arange(x.size + 1, x.size + 500))
 
 d = {x: exponential(x, *popt) for x in x2}
 day_over_1M = [k for k in d.keys() if d[k] > 1e6][0]
@@ -428,7 +428,7 @@ def forecast(country):
     def dates(x, pos):
         return np.datetime64(df_brazil["date"].iloc[0], "D") + int(x)
     for i in country:
-        df_brazil = df.loc[(df["Country"] == i) & (df["confirmed"] > 0)]
+        df_brazil = df.loc[(df["Country"] == i)]# & (df["confirmed"] > 0)]
         brazil_max = "{:,.0f}".format(
             int(df_brazil["confirmed"].max())).replace(
             ",", ".")
@@ -443,12 +443,12 @@ def forecast(country):
 
         formatter_x = FuncFormatter(millions)
         formatter_y = FuncFormatter(dates)
-
-        plt.plot(x2, exponential(x2, *popt), "--", color="black", alpha=0.3)
-        plt.plot(x, y, label=i)
+        ax = plt.gca()
+        color = next(ax._get_lines.prop_cycler)["color"]
+        plt.plot(x2, exponential(x2, *popt), "--", color = color, alpha=0.3)
+        plt.plot(x, y, label=i, color = color)
         plt.title(
             f"COVID-19 cummulative confirmed cases for {country} and projection")
-        ax = plt.gca()
         ax.yaxis.set_major_formatter(formatter_x)
         ax.xaxis.set_major_formatter(formatter_y)
     plt.legend()
