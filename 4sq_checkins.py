@@ -21,6 +21,6 @@ while True:
     checkins.append(next(all_checkins))
 
 checkins_df = pd.json_normalize(checkins)
-checkins_df = checkins_df.iloc[:,[1,7,10,11]]
+checkins_df = checkins_df.iloc[:,[1,7,10,11,15]]
 checkins_df["createdAt"] = pd.to_datetime(checkins_df["createdAt"], unit = "s").dt.date
-checkins_df.to_csv("fq_checkins.csv",index = False, header = True, sep = ";")
+checkins_df.to_csv("fq_checkins.csv",index = False, header = True, sep = ";", encoding = "UTF-8")
