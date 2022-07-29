@@ -90,7 +90,7 @@ class Weather(City):
 
     def __init__(self,city):
         City.__init__(self,city)
-        API_WEATHER = "0f33e87898c04ffab30612380ef857e3"
+        API_WEATHER = ""
         lat,lon = self.coordinates()
         url_and_param = "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&appid={}&units=metric&exlude=minutely,hourly".format(lat,lon,API_WEATHER)
         response = urllib.request.urlopen(url_and_param).read()
