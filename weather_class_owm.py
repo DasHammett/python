@@ -17,7 +17,7 @@ class City():
 
     def __init__(self,city):
         self.city = city
-        API_GEO = "pk.eyJ1IjoiaGFtbWV0dCIsImEiOiJjanBzdmhoNmMxMXdjNDZteDNmZ3A3ZzdpIn0.N0bVWWOEet21WUumGxW9oA"
+        API_GEO = ""
         url_and_params = "https://api.mapbox.com/geocoding/v5/mapbox.places/" + urllib.parse.quote(city) + \
         ".json?types=place&autocomplete=false&access_token=" + API_GEO
         response = urllib.request.urlopen(url_and_params).read()
