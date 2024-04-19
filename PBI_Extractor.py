@@ -10,8 +10,20 @@ files = glob.glob(mypath + '/**/*.pbix', recursive=True)
 
 pbix_tool_path = r"C:\Users\Jordi\Downloads\pbi-tools.1.0.0-rc.4\pbi-tools.exe"
 destination_folder = r"C:\Users\Jordi\Desktop\Metadata"
-script_location = r"C:\Users\Jordi\Desktop\Metadata\MetadataExport.cs"
+script_location = r"C:\Users\Jordi Vidal\Downloads\MetadataExport.cs"
 
+#Change destination folder for extraction by modifying the MetadataExport.cs folderName
+with open(script_location, "r") as f:
+    lines = f.readlines()
+
+output_lines = [line for line in lines if "string folderName" not in line]    
+index = [row for row, line in enumerate(lines) if "string folderName" in line]
+output_lines.insert(index[0], f"string folderName = @\"{destination_folder}\"" + "\n")
+
+with open(script_location, "w") as f:
+    f.writelines(output_lines)
+    
+# Extract metadata
 for i in files:
     pbix_folder = i.split("\\")[-1].split(".")[0]
     dest_dir = f"{destination_folder}\\{pbix_folder}"
@@ -31,6 +43,6 @@ for i in files:
                 shutil.rmtree(dir_path)
 
     print(f"Extracting metadata for {pbix_folder}")            
-    os.system(f"start /wait /d \"C:\\Program Files (x86)\\Tabular Editor\" TabularEditor.exe \"{dest_dir}\\Model\database.json\" -S {destination_folder}\\MetadataExport.cs")
+    os.system(f"start /wait /d \"C:\\Program Files (x86)\\Tabular Editor\" TabularEditor.exe \"{dest_dir}\\Model\database.json\" -S {script_location}")
    # os.remove(i)
 print("Done")
