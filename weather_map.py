@@ -1,7 +1,7 @@
 import requests
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 
-API_WEATHER = "0f33e87898c04ffab30612380ef857e3"
+API_WEATHER = ""
 url_and_params_rain = f"https://tile.openweathermap.org/map/precipitation_new/8/129/95?appid={API_WEATHER}"
 url_and_params_clouds = f"https://tile.openweathermap.org/map/clouds_new/8/129/95?appid={API_WEATHER}"
 
