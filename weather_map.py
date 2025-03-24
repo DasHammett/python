@@ -2,14 +2,14 @@ import requests
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 
 API_WEATHER = ""
-url_and_params_rain = f"https://tile.openweathermap.org/map/precipitation_new/8/129/95?appid={API_WEATHER}"
-url_and_params_clouds = f"https://tile.openweathermap.org/map/clouds_new/8/129/95?appid={API_WEATHER}"
+url_and_params_rain = f"https://tile.openweathermap.org/map/precipitation_new/z/x/y?appid={API_WEATHER}"
+url_and_params_clouds = f"https://tile.openweathermap.org/map/clouds_new/z/x/y?appid={API_WEATHER}"
 
 response_rain = requests.get(url_and_params_rain, stream=True).raw
 response_clouds = requests.get(url_and_params_clouds, stream=True).raw
 
 # Background image
-background_src = "/home/hammett/Downloads/Barcelona_map.png"
+background_src = ""
 background_img = Image.open(background_src).convert("RGB")
 background_img = ImageEnhance.Color(background_img).enhance(0)
 #background_img = ImageEnhance.Brightness(background_img).enhance(0.88)
